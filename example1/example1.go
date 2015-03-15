@@ -27,8 +27,9 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("Client sent: %s\n", string(message))
 		if err := ws.WriteMessage(websocket.TextMessage, message); err != nil {
+			log.Println(err)
 			ws.Close()
-			break
+			return
 		}
 	}
 	log.Println("Closing connection")
