@@ -1,0 +1,31 @@
+<html>
+	<body>
+		<h1>Example 1</h1>
+		<input id="txtBox" type="text" />
+		<div id="messages"></div>
+
+		<script type="text/javascript">
+			var conn = new WebSocket("ws://"+location.host+"/ws");
+			var messages = document.getElementById("messages");
+			var txtBox = document.getElementById("txtBox");
+
+			function appendMessage(msg) {
+				messages.innerHTML += msg+"<br>";
+			}
+			
+			txtBox.onkeyup = function(event) {
+				if(event.keyCode == 13) { // ENTER key
+					conn.send(txtBox.value);
+					txtBox.value = "";	
+				} 
+			};
+
+			conn.onclose = function(evt) {
+				appendMessage("Connection closed");
+			}
+			conn.onmessage = function(evt) {
+				appendMessage(evt.data);
+			}
+		</script>
+	</body>
+</html>
