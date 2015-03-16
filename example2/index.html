@@ -1,30 +1,79 @@
 <html>
 	<body>
-		<h1>Example 1</h1>
-		<input id="txtBox" type="text" />
-		<div id="messages"></div>
+		<h1>Example 2</h1>
+		<p><b>Status</b>: <span id="status">--</span></p>
+		<p><b>CPU</b>: <span id="cpu">--</span></p>
+		<p><b>Mem</b>: <span id="mem">--</span></p>
+		<p><b>Disk</b>: <span id="disk">--</span></p>
+		<table id="procs">
+			<thead>
+				<th>PID</th><th>USER</th><th>PR</th><th>NI</th><th>VIRT</th><th>RES</th>
+				<th>SHR</th><th>S</th><th>%CPU</th><th>%MEM</th><th>TIME+</th><th>COMMAND</th>
+			</thead>
+			<tbody>
+			</tbody>
+		</table>
 
 		<script type="text/javascript">
 			var conn = new WebSocket("ws://"+location.host+"/ws");
-			var messages = document.getElementById("messages");
-			var txtBox = document.getElementById("txtBox");
+			// var status = document.getElementById("status");
+			var cpu = document.getElementById("cpu");
+			var mem = document.getElementById("mem");						
+			var disk = document.getElementById("disk");						
+			var procs = document.getElementById("procs")
 
-			function appendMessage(msg) {
-				messages.innerHTML += msg+"<br>";
+			function updateCpu(data) {
+				cpu.textContent = data+"%";
 			}
-			
-			txtBox.onkeyup = function(event) {
-				if(event.keyCode == 13) { // ENTER key
-					conn.send(txtBox.value);
-					txtBox.value = "";	
-				} 
-			};
+
+			function updateMem(data) {
+				mem.textContent = data+"%";
+			}
+
+			function updateDisk(data) {
+				disk.textContent = data+"%";
+			}
+
+			function updateProcs(data) {
+				// remove the old rows, but not the first one,
+				// which is the header row
+				for(var i = 1; i < procs.rows.length; ++i) {
+					procs.deleteRow(i);
+				}
+
+				for(var i = 0; i < data.length; ++i) {
+					var row = procs.insertRow();
+					for(var k = 0; k < data[i].Points.length; ++k) {
+						var cell = row.insertCell();
+						cell.innerHTML = data[i].Points[k];
+					}
+				}
+			}
+
+			function updateStats(data) {
+				parsed = JSON.parse(data);
+				if(parsed.Type == "cpu") {
+					updateCpu(parsed.Data);
+				} else if(parsed.Type == "mem") {
+					updateMem(parsed.Data);
+				} else if(parsed.Type == "disk") {
+					updateDisk(parsed.Data);
+				} else if(parsed.Type == "procs") {
+					updateProcs(parsed.Procs);
+				}
+			}
+
+			conn.onopen = function(evt) {
+				console.log("Open")
+				document.getElementById("status").textContent = "Open";
+			}
 
 			conn.onclose = function(evt) {
-				appendMessage("Connection closed");
+				console.log("Closed")
+				document.getElementById("status").textContent = "Closed";
 			}
 			conn.onmessage = function(evt) {
-				appendMessage(evt.data);
+				updateStats(evt.data);
 			}
 		</script>
 	</body>
