@@ -9,9 +9,7 @@
 			<thead>
 				<th>PID</th><th>USER</th><th>PR</th><th>NI</th><th>VIRT</th><th>RES</th>
 				<th>SHR</th><th>S</th><th>%CPU</th><th>%MEM</th><th>TIME+</th><th>COMMAND</th>
-			</thead>
-			<tbody>
-			</tbody>
+			</thead>		
 		</table>
 
 		<script type="text/javascript">
@@ -37,8 +35,8 @@
 			function updateProcs(data) {
 				// remove the old rows, but not the first one,
 				// which is the header row
-				for(var i = 1; i < procs.rows.length; ++i) {
-					procs.deleteRow(i);
+				while(procs.rows.length > 1) {
+					procs.deleteRow(procs.rows.length-1);
 				}
 
 				for(var i = 0; i < data.length; ++i) {
@@ -64,12 +62,10 @@
 			}
 
 			conn.onopen = function(evt) {
-				console.log("Open")
 				document.getElementById("status").textContent = "Open";
 			}
 
 			conn.onclose = function(evt) {
-				console.log("Closed")
 				document.getElementById("status").textContent = "Closed";
 			}
 			conn.onmessage = function(evt) {
