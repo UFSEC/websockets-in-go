@@ -85,8 +85,6 @@ func stateManager() {
                     // both players are here, let's start the game!
                     msg := Message{"start", GameStart{cop.pos, rob.pos}}
                     updateAll(msg, cop.update, rob.update, spectators)
-                    // rob.update <- msg
-                    // cop.update <- msg
                 } else { // send a nil to indicate we've already got our 2 players
                     newChan := make(chan Message, 100)
                     newUpdateChan <- newChan
@@ -98,13 +96,11 @@ func stateManager() {
                     rob.pos = u.Pos
                 } else if u.Who == "cop" {
                     cop.pos = u.Pos
-                    moveCount = moveCount-1
+                    moveCount-- // also decrement the move count for the cop
                 }
                 if rob.pos.Row == cop.pos.Row && rob.pos.Col == cop.pos.Col {
                     // the game is over, cop wins!
                     msg := Message{"winner", GameOver{"cop", cop.pos}}
-                    // cop.update <- msg
-                    // rob.update <- msg
                     updateAll(msg, cop.update, rob.update, spectators)
                     log.Println("Game over!")
                     return
@@ -112,8 +108,6 @@ func stateManager() {
                 if moveCount == 0 {
                     // the game is over, robber wins!
                     msg := Message{"winner", GameOver{"rob", rob.pos}}
-                    // cop.update <- msg
-                    // rob.update <- msg
                     updateAll(msg, cop.update, rob.update, spectators)
                     log.Println("Game over!")
                     return
@@ -124,17 +118,11 @@ func stateManager() {
                     // if it is a cop who moved, we send
                     // a modified move cout
                     msg := Message{"update", Update{"cop", cop.pos}}
-                    // cop.update <- msg
-                    // rob.update <- msg
                     updateAll(msg, cop.update, rob.update, spectators)
                     msg = Message{"count", MoveCountUpdate{moveCount}}
-                    // cop.update <- msg
-                    // rob.update <- msg
                     updateAll(msg, cop.update, rob.update, spectators)
                 } else if u.Who == "rob" {
                     msg := Message{"update", Update{"rob", rob.pos}}
-                    // cop.update <- msg
-                    // rob.update <- msg
                     updateAll(msg, cop.update, rob.update, spectators)
                 }
             } 
