@@ -19,6 +19,7 @@ type client struct {
 
 var register chan bool = make(chan bool, 10)
 var newClient chan client = make(chan client, 10)
+var unregister chan int = make(chan int, 10)
 
 func wsHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Connection received")
@@ -34,7 +35,11 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	// get my data channel
 	client := <-newClient
 
-	defer func(){ ws.Close() }()
+	defer func(){ 
+		log.Println("Closing connection")
+		ws.Close()
+		unregister <- client.id
+	}()
 
 	for datapoint := range client.datachan {
 		if err := ws.WriteMessage(websocket.TextMessage, datapoint); err != nil {
@@ -42,7 +47,6 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	log.Println("Closing connection")
 }	
 
 func collect(data chan []byte, register chan bool, newClient chan client) {
@@ -50,16 +54,19 @@ func collect(data chan []byte, register chan bool, newClient chan client) {
 	var currId = 0
 	for {
 		select {
-			case datapoint := <-data:
-				for _, client := range clients {
-					client.datachan <- datapoint
-				}
-			case <-register:
-				c := client{currId, make(chan []byte, 20)}
-				clients[currId] = c
-				newClient <- c
-				currId++
+		case datapoint := <-data:
+			for _, client := range clients {
+				client.datachan <- datapoint
 			}
+		case <-register:
+			c := client{currId, make(chan []byte, 20)}
+			clients[currId] = c
+			newClient <- c
+			currId++
+		case id := <-unregister:
+			log.Println("Removing client")
+			delete(clients, id)
+		}
 	}
 }
 

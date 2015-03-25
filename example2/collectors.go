@@ -26,7 +26,7 @@ type proclist struct {
 }
 
 func collectTop(data chan []byte) {
-	top := exec.Command("top", "-b", "-d", "2")	
+	top := exec.Command("top", "-b", "-d", "1")	
 	reader, writer := io.Pipe()
 	top.Stdout = writer
 	scanner := bufio.NewScanner(reader)
@@ -38,7 +38,6 @@ func collectTop(data chan []byte) {
 
 	defer top.Wait()
 
-	log.Println("Starting to scan")
 	for scanner.Scan() {
 		// log.Println("top scan")
 		if strings.Contains(scanner.Text(), "Cpu(s)") {
@@ -84,12 +83,11 @@ func collectTop(data chan []byte) {
 }
 
 func collectIoStat(data chan []byte) {
-	iostat := exec.Command("iostat", "-x", "2")	
+	iostat := exec.Command("iostat", "-x", "1")	
 	reader, writer := io.Pipe()
 	iostat.Stdout = writer
 	scanner := bufio.NewScanner(reader)
 
-	log.Println("Staring iostat")
 	if err := iostat.Start(); err != nil {
 		log.Fatal(err)
 	}
