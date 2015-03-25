@@ -1,6 +1,5 @@
 <html>
     <head>
-        <script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
         <style>
             .grid { margin:1em auto; border-collapse:collapse }
             .grid td {
@@ -23,6 +22,7 @@
     </head>
     <body>
         <h2 id="status">Waiting for other player.</h2>
+        <h2 id="whoami"></h2>
         <p><b>Moves left</b>: <span id="moves">--</span></p>
         <table class="grid" id="grid"></table>
     </body>
@@ -73,7 +73,7 @@
         setSelected(this.row, this.col, this.id);
     };
 
-    $(document).keydown(function(e) {
+    document.onkeydown = function(e) {
         if(frozen) {
             // no movements allowed right now
             return;
@@ -99,7 +99,7 @@
                 sendUpdatedPosition(selectedRow, selectedCol);        
             }
         }
-    });
+    };
 
     if (window["WebSocket"]) {
         conn = new WebSocket("ws://"+location.host+"/ws");
@@ -112,10 +112,7 @@
             console.log("Connection closed");
         };
         conn.onmessage = function(evt) {
-            console.log("Data received");
-            console.log(evt);
             var data = JSON.parse(evt.data);
-            console.log(data);
             receive(data);            
         };
     } else {
@@ -124,8 +121,6 @@
 
     function sendUpdatedPosition(row, col) {
         var data =  JSON.stringify({"Who": myId, "Pos": {"Row": row, "Col": col}});
-        console.log("Sending updated position");
-        console.log(data);
         send(data);
     }
 
@@ -140,13 +135,24 @@
     function receive(data) {
         if(data.Type == "init") {
             myId = data.Data.Who;
+            if(myId == "spectator") {
+                document.getElementById("whoami").innerHTML = "You are spectating this game."
+                document.getElementById("status").innerHTML = "Game on!";    
+                return
+            } else if(myId == "rob") {
+                document.getElementById("whoami").innerHTML = "You are playing as the robber (orange)."
+            } else if(myId =="cop") {
+                document.getElementById("whoami").innerHTML = "You are playing as the cop (blue)."
+            }
             selectedRow = data.Data.Pos.Row;
             selectedCol = data.Data.Pos.Col;
             players[myId].updatePos(selectedRow, selectedCol);  
         } else if(data.Type == "start") {
-            frozen = false;
-            // status.textContent = "Game on!";
             document.getElementById("status").innerHTML = "Game on!";
+            if(myId == "spectator") {
+                return
+            }
+            frozen = false;
             players["cop"].updatePos(data.Data.CopPos.Row, data.Data.CopPos.Col);
             players["rob"].updatePos(data.Data.RobPos.Row, data.Data.RobPos.Col);
         } else if(data.Type == "winner") {
