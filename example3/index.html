@@ -1,0 +1,179 @@
+<html>
+    <head>
+        <script src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
+        <style>
+            .grid { margin:1em auto; border-collapse:collapse }
+            .grid td {
+                cursor:pointer;
+                width:30px; height:30px;
+                border:1px solid #ccc;
+                text-align:center;
+                font-family:sans-serif; font-size:13px
+            }
+            .grid td.rob {
+                background-color: orange;
+            }
+            .grid td.cop {
+                background-color: blue;
+            }
+            .grid td.copwin {
+                background-color: red;
+            }
+        </style>
+    </head>
+    <body>
+        <h2 id="status">Waiting for other player.</h2>
+        <p><b>Moves left</b>: <span id="moves">--</span></p>
+        <table class="grid" id="grid"></table>
+    </body>
+    <script>
+    var frozen = true;
+    var numRows = 10;
+    var numCols = 10;
+    var selectedRow = 0;
+    var selectedCol = 0;
+    var grid = document.getElementById("grid");
+    var status = document.getElementById("status");
+    var moves = document.getElementById("moves");
+    var players = [];
+    var myId;
+
+    for(var r = 0; r < numRows; ++r){
+        var tr = grid.appendChild(document.createElement("tr"));
+        for(var c = 0; c < numCols; ++c){
+            tr.appendChild(document.createElement("td"));
+        }
+    }
+
+    function updatedSelected(row, col) {
+        setSelected(row, col, myId);
+        sendUpdatedPosition(row, col);
+    }
+
+    function setSelected(row, col, id) {
+        setGridCellClass(row, col, id);
+    }
+
+    function setUnselected(row, col) {
+        setGridCellClass(row, col, "");
+    }
+
+    function setGridCellClass(row, col, className) {
+        grid.rows[row].cells[col].className = className;
+    }
+
+    function Player(id, row, col) {
+        this.id = id;
+        this.row = row;
+        this.col = col;
+    }
+    Player.prototype.updatePos = function(row, col) {
+        setUnselected(this.row, this.col);
+        this.row = row; this.col = col;
+        setSelected(this.row, this.col, this.id);
+    };
+
+    $(document).keydown(function(e) {
+        if(frozen) {
+            // no movements allowed right now
+            return;
+        }
+        // make sure it's an arrow key
+        if(37 <= e.keyCode && e.keyCode <= 40) {
+            var updated = false;
+            if(e.keyCode == 37 && selectedCol > 0) { // left
+                selectedCol = selectedCol-1;
+                updated = true;
+            } else if(e.keyCode == 39 && selectedCol < numCols-1) { // right
+                selectedCol = selectedCol+1;
+                updated = true;
+            } else if(e.keyCode == 38 && selectedRow > 0) { // up
+                selectedRow = selectedRow-1;
+                updated = true;
+            } else if(e.keyCode == 40 && selectedRow < numRows-1) { // down
+                selectedRow = selectedRow+1;
+                updated = true;
+            }
+            // players[myId].updatePos(selectedRow, selectedCol);
+            if(updated) {
+                sendUpdatedPosition(selectedRow, selectedCol);        
+            }
+        }
+    });
+
+    if (window["WebSocket"]) {
+        conn = new WebSocket("ws://"+location.host+"/ws");
+        conn.onopen = function(evt) {
+            // add each player to our map
+            players["cop"] = new Player("cop", 9, 9);
+            players["rob"] = new Player("rob", 0, 0);
+        };
+        conn.onclose = function(evt) {
+            console.log("Connection closed");
+        };
+        conn.onmessage = function(evt) {
+            console.log("Data received");
+            console.log(evt);
+            var data = JSON.parse(evt.data);
+            console.log(data);
+            receive(data);            
+        };
+    } else {
+        console.log("Your browser does not support WebSockets");
+    }
+
+    function sendUpdatedPosition(row, col) {
+        var data =  JSON.stringify({"Who": myId, "Pos": {"Row": row, "Col": col}});
+        console.log("Sending updated position");
+        console.log(data);
+        send(data);
+    }
+
+    function recvUpdatedPosition(id, row, col) {
+        if(!players[id]) {
+            console.log("I don't recognize " + id);
+            return;
+        }
+        players[id].updatePos(row, col);
+    }
+
+    function receive(data) {
+        if(data.Type == "init") {
+            myId = data.Data.Who;
+            selectedRow = data.Data.Pos.Row;
+            selectedCol = data.Data.Pos.Col;
+            players[myId].updatePos(selectedRow, selectedCol);  
+        } else if(data.Type == "start") {
+            frozen = false;
+            // status.textContent = "Game on!";
+            document.getElementById("status").innerHTML = "Game on!";
+            players["cop"].updatePos(data.Data.CopPos.Row, data.Data.CopPos.Col);
+            players["rob"].updatePos(data.Data.RobPos.Row, data.Data.RobPos.Col);
+        } else if(data.Type == "winner") {
+            frozen = true;
+            document.getElementById("status").innerHTML = "Game over! " +
+                (data.Data.Who == "cop" ? "Cop":"Robber") + " wins!";
+            if(data.Data.Who == "cop") {
+                setUnselected(players["cop"].row, players["cop"].col);
+                setUnselected(players["rob"].row, players["rob"].col);
+                setSelected(data.Data.Pos.Row, data.Data.Pos.Col, "copwin");                
+            }
+        } else if(data.Type == "count") {
+            moves.textContent = data.Data.Count+"";
+        } else if(data.Type == "update") {
+            recvUpdatedPosition(data.Data.Who, data.Data.Pos.Row, data.Data.Pos.Col);            
+        } else {
+            console.log("Unknown message type");
+            console.log(data);
+        }        
+    }
+
+    function send(data) {
+        if(!conn) {
+            console.log("Connection null");
+            return;
+        }
+        conn.send(data);
+    }
+    </script>
+</html>
