@@ -120,3 +120,4 @@ Try out the example [here](http://play.golang.org/p/ro2rGtNjlE).
 
 
 #### Gotcha! JSON Serialization
+In this example, we going to be serializing some JSON data to send to the client. I've made some structs to hold out data. Go will automatically encode structs into JSON and decode JSON into structs. *However*, there is something important to note here: only fields whose names begin with a captial letter will be encoded. Fields with a name that begins with a lowercase name will be ignored by the encoder, and you won't see them in the resulting JSON string.
